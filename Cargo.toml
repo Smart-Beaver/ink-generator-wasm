@@ -1,0 +1,45 @@
+[package]
+name = "ink-generator"
+version = "0.3.3"
+authors = ["Maciek Malik <poczta@maciekmalik.pl>", "Jasuwienas <mariusz.jasuwienas@blockydevs.com>", "BlockyDevs Team contact@blockydevs.com"]
+edition = "2018"
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "init"
+path = "src/init.rs"
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "0.2.84"
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.7", optional = true }
+js-sys = "0.3.64"
+web-sys = { version = "0.3.64", features = ["Window", "Response", "ReadableStream", "Headers", "Request", "RequestInit", "RequestMode", "Storage"] }
+wasm-bindgen-futures = "0.4.37"
+syn = {version = "2.0.38", features = ["full", "visit", "visit-mut", "fold", "extra-traits"] }
+syn-serde = {version = "0.3", features = ["json"]}
+prettyplease = "0.2.15"
+futures = { version = "0.3.17", features = [] }
+serde_json = "1.0.108"
+serde = { version = "1.0.190", features = ["derive"] }
+toml = { version = "0.8.8", features = [] }
+toml_edit = "0.21.0"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.34"
+
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
