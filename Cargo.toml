@@ -1,6 +1,6 @@
 [package]
 name = "ink-generator"
-version = "0.3.3"
+version = "0.3.6"
 authors = ["Maciek Malik <poczta@maciekmalik.pl>", "Jasuwienas <mariusz.jasuwienas@blockydevs.com>", "BlockyDevs Team contact@blockydevs.com"]
 edition = "2018"
 

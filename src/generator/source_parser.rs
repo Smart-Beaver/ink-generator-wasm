@@ -100,6 +100,7 @@ pub async fn run(contract: Contract) -> Result<String, Box<dyn Error>> {
         extensions_checked,
         contract.standard,
         &contract.metadata,
+        contract.use_external_crate
     )?;
 
     Ok(prettifier::unparse(&merger))
