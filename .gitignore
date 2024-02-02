@@ -9,3 +9,5 @@ wasm-pack.log
 
 **/target/**
 contracts/PSP22/extensions/tests/*/src/*
+
+draft
