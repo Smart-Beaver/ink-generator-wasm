@@ -1,8 +1,9 @@
 use std::borrow::BorrowMut;
 use std::error::Error;
 
-use syn::{Attribute, Expr, Field, Fields, File, ImplItemFn, Item, ItemImpl, ItemMod, ItemStruct, ItemUse, parse_quote, Stmt};
+use syn::{Attribute, Expr, Field, Fields, File, Ident, ImplItemFn, Item, ItemImpl, ItemMod, ItemStruct, ItemUse, parse_quote, Stmt, UseTree};
 use syn::__private::ToTokens;
+use syn::spanned::Spanned;
 
 use crate::{Metadata, Standard};
 use crate::generator::ast::{extract_attribute_expression, extract_fn_by_ident, extract_fn_implementation_by_attr, extract_fn_implementations, extract_impl_blocks, extract_impl_by_ident, field_to_fn_arg, find_attribute, find_struct_by_attr, generate_field_value, get_ident_from_impl_block, merge_fn_with_start_index, parse_expr_as_number};
@@ -19,7 +20,7 @@ mod constructor_values;
 const DEFAULT_LINE_NUMBER_VALUE: usize = 0;
 
 pub trait AstMerger {
-    fn merge(base_contract: &File, extensions: Vec<ExtensionContext>, standard: Standard, metadata_common: &Option<Metadata>) -> Result<File, Box<dyn Error>>;
+    fn merge(base_contract: &File, extensions: Vec<ExtensionContext>, standard: Standard, metadata_common: &Option<Metadata>, single_file_mode: bool) -> Result<File, Box<dyn Error>>;
 }
 
 pub type FnChangesCount = u32;
@@ -333,8 +334,10 @@ fn merge_impl_blocks(base_contract: &mut ItemMod, extension: &mut ItemMod) {
 }
 
 impl AstMerger for Merger {
-    fn merge(base_contract: &File, extensions: Vec<ExtensionContext>, standard: Standard, metadata_common: &Option<Metadata>) -> Result<File, Box<dyn Error>> {
+    fn merge(base_contract: &File, extensions: Vec<ExtensionContext>, standard: Standard, metadata_common: &Option<Metadata>, single_file_mode: bool) -> Result<File, Box<dyn Error>> {
         let mut common = base_contract.clone();
+
+        filter_global_imports(&mut common, single_file_mode, standard);
 
         //Search for main mod blocks
         let base_main_mod = parse_main_mod(&mut common, parse_quote! {
@@ -357,10 +360,85 @@ impl AstMerger for Merger {
                 metadata_common,
             );
 
-
             merge_impl_blocks(base_main_mod, ext_main_mod);
         }
+
+        filter_standard_imports(base_main_mod, single_file_mode, standard);
+
         console_log!("Merging done");
         Ok(common.clone())
+    }
+}
+
+///Filter out not needed import statements when single file mode is enabled
+/// change required imports to use external crate instead of local files
+/// All changes are applied in place to the main mod
+/// Removes all mod statements before the main mod with the contract
+/// and all use statements
+fn filter_global_imports(main_file: &mut File, single_file_mode: bool, standard: Standard) {
+    if !single_file_mode {
+        return;
+    }
+
+    match standard {
+        Standard::PSP22 => {
+            psp22_filter_global_imports(main_file);
+        }
+        Standard::PSP34 => {
+            //nop
+        }
+    }
+}
+
+fn psp22_filter_global_imports(main_file: &mut File) {
+    let contract_attr: Attribute = parse_quote! {#[ink::contract]};
+
+    let filtered_items = main_file.items.iter().filter(|&i| {
+        return if let Item::Mod(mod_value) = i {
+            mod_value.attrs.iter().any(|root_attr| {
+                root_attr.path().eq(contract_attr.path())
+            })
+        } else {
+            false
+        };
+    }).cloned().collect::<Vec<Item>>();
+
+    main_file.items = filtered_items;
+}
+
+///Replace import paths for files from standard
+/// `use crate::PSP22` should become `use psp22::PSP22` etc.
+fn filter_standard_imports(main_mod: &mut ItemMod, single_file_mode: bool, standard: Standard) {
+    if !single_file_mode {
+        return;
+    }
+
+    match standard {
+        Standard::PSP22 => {
+            psp22_filter_standard_imports(main_mod, &standard);
+        }
+        Standard::PSP34 => {
+            //nop
+        }
+    }
+}
+
+fn psp22_filter_standard_imports(main_mod: &mut ItemMod, standard: &Standard) {
+    if let Some(external_crate) = standard.get_external_crate_name() {
+        //Current generator implementation assumes that contract will not have any other special imports
+        let main_mod_span = main_mod.span();
+        let crate_import_prefix = Ident::new("crate", main_mod_span);
+
+        main_mod.content.iter_mut().for_each(|(_, items)| {
+            items.iter_mut().for_each(|item| {
+                if let Item::Use(ref mut item_use) = item {
+                    if let UseTree::Path(path) = &mut item_use.tree {
+                        if path.ident == crate_import_prefix {
+                            path.ident = Ident::new(external_crate.name, main_mod_span);
+                        }
+                    }
+                }
+            })
+        });
     }
 }

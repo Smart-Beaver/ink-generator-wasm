@@ -1,6 +1,7 @@
 extern crate console_error_panic_hook;
 
 use std::fmt::Display;
+use std::panic;
 use std::str::FromStr;
 
 use wasm_bindgen::prelude::*;
@@ -13,8 +14,6 @@ mod logger;
 mod code_loader;
 pub mod generator;
 pub mod prettifier;
-
-use std::panic;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[wasm_bindgen]
@@ -58,9 +57,29 @@ impl Display for OutputFile {
 #[wasm_bindgen]
 pub enum Standard {
     PSP22,
+    PSP34,
 // Not yet supported:
 //    PSP37,
-//    PSP34,
+}
+
+pub struct ExternalCrate{
+    pub name: &'static str,
+    pub version: &'static str,
+}
+
+impl Standard{
+
+    pub fn get_external_crate_name(&self) -> Option<ExternalCrate>{
+        match self{
+            Standard::PSP22 => Some(ExternalCrate{
+                name: "psp22-full",
+                version: "0.3.0",
+            }),
+            Standard::PSP34 => None//Not published yet
+            //PSP37
+        }
+    }
+
 }
 
 impl FromStr for Standard {
@@ -69,9 +88,10 @@ impl FromStr for Standard {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "PSP22" => Ok(Standard::PSP22),
+            "PSP34" => Ok(Standard::PSP34),
             // Not yet supported:
             //    "PSP37" => Ok(Standard::PSP37),
-            //    "PSP34" => Ok(Standard::PSP34),
+
             _ => Err(()),
         }
     }
@@ -81,9 +101,9 @@ impl ToString for Standard {
     fn to_string(&self) -> String {
         match self {
             Standard::PSP22 => "PSP22".to_owned(),
+            Standard::PSP34 => "PSP34".to_owned(),
             // Not yet supported:
             //    Standard::PSP37 => "PSP37".to_owned(),
-            //    Standard::PSP34 => "PSP34".to_owned(),
         }
     }
 }
@@ -108,7 +128,7 @@ pub struct Contract {
     #[wasm_bindgen(skip)]
     pub license_name: String,
 
-    pub use_external_crate: bool
+    pub use_external_crate: bool,
 }
 
 fn get_all_files() -> Vec<OutputFile> {
@@ -177,7 +197,7 @@ impl Contract {
                 }).collect(),
                 None => get_all_files(),
             },
-            use_external_crate
+            use_external_crate,
         }
     }
 
@@ -314,15 +334,17 @@ impl ParserResponse {
 pub async fn start(input: Contract) -> ParserResponse {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-    let standard_str = input.standard.to_string();
+    let standard = input.standard;
     let source = &input.source.clone();
     let license = &input.license_name.clone();
-    let files_to_process = input.files.to_vec();
+    let files_to_process = match input.use_external_crate {
+        true => vec![OutputFile::Main, OutputFile::Cargo], //Generate code that uses external crate - only lib.rs is created
+        false => input.files.to_vec()
+    };
 
     match run(input).await {
         Ok(code) => {
-            match with_static_content(code, license, source, &standard_str, files_to_process)
-                .await {
+            match with_static_content(code, license, source, standard, files_to_process).await {
                 Ok(downloaded_files) => ParserResponse {
                     result: true,
                     message: String::new(),

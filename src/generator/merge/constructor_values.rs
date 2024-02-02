@@ -39,5 +39,9 @@ pub fn produce_metadata_field_expr(
                 _ => parse_quote!(0)
             }
         }
+        Standard::PSP34 => {
+            //Currently PSP34 does not support metadata extension
+            parse_quote!(0)
+        }
     }
 }

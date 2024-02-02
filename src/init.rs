@@ -20,7 +20,7 @@ fn copy_static(extension: &str, static_content: &str) {
 }
 
 fn generate(destination: &str, main: &syn::File, extensions: Vec<ExtensionContext>) {
-    let merged = Merger::merge(main, extensions, Standard::PSP22, &None).expect("Merge failed");
+    let merged = Merger::merge(main, extensions, Standard::PSP22, &None, false).expect("Merge failed");
     let content = prettifier::unparse(&merged);
     let path = format!("contracts/PSP22/extensions/tests/{destination}/src/lib.rs");
     write_to_file(path, &content).expect("Could not write to file.");
