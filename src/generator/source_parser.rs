@@ -1,5 +1,7 @@
 use std::error::Error;
+use std::fmt;
 use std::str::FromStr;
+use enum_map::Enum;
 
 use futures::future::join_all;
 
@@ -9,10 +11,9 @@ use crate::generator::merge::{AstMerger, Merger};
 use crate::logger::console_log;
 use crate::logger::log;
 
+pub const BASE_CONTRACT_FILE_TYPE: &str = ".rs";
 
-const BASE_CONTRACT_FILE_TYPE: &str = ".rs";
-
-const CONTRACT_EXTENSION_FILE_TYPE: &str = ".trs";
+pub const CONTRACT_EXTENSION_FILE_TYPE: &str = ".trs";
 
 #[derive(Clone)]
 pub struct ExtensionContext {
@@ -20,7 +21,7 @@ pub struct ExtensionContext {
     pub ast: syn::File,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Copy, Enum)]
 pub enum ExtensionKind {
     Metadata,
     Mintable,
@@ -33,6 +34,12 @@ pub enum ExtensionKind {
     Enumerable,
     Ownable,
     AccessControl,
+}
+
+impl fmt::Display for ExtensionKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
 }
 
 impl FromStr for ExtensionKind {
@@ -100,7 +107,7 @@ pub async fn run(contract: Contract) -> Result<String, Box<dyn Error>> {
         extensions_checked,
         contract.standard,
         &contract.metadata,
-        contract.use_external_crate
+        contract.use_external_crate,
     )?;
 
     Ok(prettifier::unparse(&merger))

@@ -7,7 +7,7 @@ use syn::spanned::Spanned;
 
 use crate::{Metadata, Standard};
 use crate::generator::ast::{extract_attribute_expression, extract_fn_by_ident, extract_fn_implementation_by_attr, extract_fn_implementations, extract_impl_blocks, extract_impl_by_ident, field_to_fn_arg, find_attribute, find_struct_by_attr, generate_field_value, get_ident_from_impl_block, merge_fn_with_start_index, parse_expr_as_number};
-use crate::generator::merge::constructor_values::produce_metadata_field_expr;
+use crate::generator::merge::constructor_values::produce_psp22_metadata_field_expr;
 use crate::generator::merge::uses::{extract_uses, has_use};
 use crate::generator::source_parser::{ExtensionContext, ExtensionKind};
 use crate::logger::console_log;
@@ -131,8 +131,13 @@ fn extend_constructor_body(
 
                     let custom_expression_opt = match extension_kind {
                         ExtensionKind::Metadata => {
-                            //@TODO refactor to strategy - eliminate unnecessary match statements
-                            Some(produce_metadata_field_expr(extension_kind, standard, field, metadata_common))
+                            match standard {
+                                Standard::PSP22 => {
+                                    //@TODO refactor to strategy - eliminate unnecessary match statements
+                                    Some(produce_psp22_metadata_field_expr(extension_kind, field, metadata_common))
+                                }
+                                _ => custom_expression_opt
+                            }
                         }
                         _ => {
                             custom_expression_opt//Leave unchanged
