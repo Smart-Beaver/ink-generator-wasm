@@ -9,5 +9,6 @@ wasm-pack.log
 
 **/target/**
 contracts/PSP22/extensions/tests/*/src/*
+contracts/PSP34/extensions/tests/*/src/*
 
-draft
+.DS_Store

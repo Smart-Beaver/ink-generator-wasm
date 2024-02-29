@@ -7,7 +7,7 @@ use syn::spanned::Spanned;
 
 use crate::{Metadata, Standard};
 use crate::generator::ast::{extract_attribute_expression, extract_fn_by_ident, extract_fn_implementation_by_attr, extract_fn_implementations, extract_impl_blocks, extract_impl_by_ident, field_to_fn_arg, find_attribute, find_struct_by_attr, generate_field_value, get_ident_from_impl_block, merge_fn_with_start_index, parse_expr_as_number};
-use crate::generator::merge::constructor_values::produce_metadata_field_expr;
+use crate::generator::merge::constructor_values::produce_psp22_metadata_field_expr;
 use crate::generator::merge::uses::{extract_uses, has_use};
 use crate::generator::source_parser::{ExtensionContext, ExtensionKind};
 use crate::logger::console_log;
@@ -131,8 +131,13 @@ fn extend_constructor_body(
 
                     let custom_expression_opt = match extension_kind {
                         ExtensionKind::Metadata => {
-                            //@TODO refactor to strategy - eliminate unnecessary match statements
-                            Some(produce_metadata_field_expr(extension_kind, standard, field, metadata_common))
+                            match standard {
+                                Standard::PSP22 => {
+                                    //@TODO refactor to strategy - eliminate unnecessary match statements
+                                    Some(produce_psp22_metadata_field_expr(extension_kind, field, metadata_common))
+                                }
+                                _ => custom_expression_opt
+                            }
                         }
                         _ => {
                             custom_expression_opt//Leave unchanged
@@ -408,22 +413,12 @@ fn psp22_filter_global_imports(main_file: &mut File) {
 
 ///Replace import paths for files from standard
 /// `use crate::PSP22` should become `use psp22::PSP22` etc.
+/// @TODO simplify this function
 fn filter_standard_imports(main_mod: &mut ItemMod, single_file_mode: bool, standard: Standard) {
     if !single_file_mode {
         return;
     }
 
-    match standard {
-        Standard::PSP22 => {
-            psp22_filter_standard_imports(main_mod, &standard);
-        }
-        Standard::PSP34 => {
-            //nop
-        }
-    }
-}
-
-fn psp22_filter_standard_imports(main_mod: &mut ItemMod, standard: &Standard) {
     if let Some(external_crate) = standard.get_external_crate_name() {
         //Current generator implementation assumes that contract will not have any other special imports
         let main_mod_span = main_mod.span();
@@ -434,11 +429,16 @@ fn psp22_filter_standard_imports(main_mod: &mut ItemMod, standard: &Standard) {
                 if let Item::Use(ref mut item_use) = item {
                     if let UseTree::Path(path) = &mut item_use.tree {
                         if path.ident == crate_import_prefix {
-                            path.ident = Ident::new(external_crate.name, main_mod_span);
+                            path.ident = Ident::new(sanitize_crate_name(external_crate.name).as_str(), main_mod_span);
                         }
                     }
                 }
             })
         });
     }
+}
+
+///Replace '-' with '_' in crate name to make it compatible with rust
+fn sanitize_crate_name(crate_name: &str) -> String {
+    crate_name.replace('-', "_")
 }
