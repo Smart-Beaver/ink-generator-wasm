@@ -1,6 +1,6 @@
 <div align="center">
 
-![logo300H](https://github.com/Smart-Beaver/contracts-tmp/assets/8248700/c35e0dd2-16c0-414a-835b-c911516d961c)
+![logoVMov-sm](https://github.com/Smart-Beaver/.github/assets/8248700/d9d963fd-e6f7-46cb-9fce-07edc6a6d33f)
 
   <strong>A WASM module for generating smart contract code in <a href="https://use.ink/">ink!</a></strong>
 
@@ -53,25 +53,20 @@ wasm-pack publish
 
 ### 🛠️ Testing merged Smart Contracts code
 
-Simply run:
-```bash
-./scripts/test_contracts.sh
-```
-
-or execute steps from this bash script separately.
-
 First generate code of merged contracts:
 
 ```
-cargo init
+cargo run init
 ```
+
 It will create code of the SC with tested extension and save it to 
 `contracts/[STANDARD]/extension/tests/[EXTENSION]/src` directory.
 
-Then go to selected extension directory and run tests, ie:
+This command uses the same method as our front-end tool, so the code being tested is the same as the one that you can see.
+
+Then run this command:
 ```
-cd contracts/PSP22/extension/burnable
-cargo test
+cargo test --manifest-path contracts/Cargo.toml --features "contract","test-only"
 ```
 
 ## 🚴 Usage

@@ -1,6 +1,6 @@
 extern crate console_error_panic_hook;
 
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::panic;
 use std::str::FromStr;
 
@@ -58,28 +58,35 @@ impl Display for OutputFile {
 pub enum Standard {
     PSP22,
     PSP34,
-// Not yet supported:
-//    PSP37,
 }
 
-pub struct ExternalCrate{
+impl Display for Standard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Standard::PSP22 => "PSP22".fmt(f),
+            Standard::PSP34 => "PSP34".fmt(f),
+        }
+    }
+}
+
+pub struct ExternalCrate {
     pub name: &'static str,
     pub version: &'static str,
 }
 
-impl Standard{
-
-    pub fn get_external_crate_name(&self) -> Option<ExternalCrate>{
-        match self{
-            Standard::PSP22 => Some(ExternalCrate{
+impl Standard {
+    pub fn get_external_crate_name(&self) -> Option<ExternalCrate> {
+        match self {
+            Standard::PSP22 => Some(ExternalCrate {
                 name: "psp22-full",
                 version: "0.3.0",
             }),
-            Standard::PSP34 => None//Not published yet
-            //PSP37
+            Standard::PSP34 => Some(ExternalCrate {
+                name: "psp34-full",
+                version: "0.2.1",
+            })
         }
     }
-
 }
 
 impl FromStr for Standard {
@@ -89,21 +96,7 @@ impl FromStr for Standard {
         match s {
             "PSP22" => Ok(Standard::PSP22),
             "PSP34" => Ok(Standard::PSP34),
-            // Not yet supported:
-            //    "PSP37" => Ok(Standard::PSP37),
-
             _ => Err(()),
-        }
-    }
-}
-
-impl ToString for Standard {
-    fn to_string(&self) -> String {
-        match self {
-            Standard::PSP22 => "PSP22".to_owned(),
-            Standard::PSP34 => "PSP34".to_owned(),
-            // Not yet supported:
-            //    Standard::PSP37 => "PSP37".to_owned(),
         }
     }
 }
